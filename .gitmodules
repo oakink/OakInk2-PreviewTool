@@ -1,0 +1,17 @@
+[submodule "thirdparty/manotorch"]
+	path = thirdparty/manotorch
+	url = https://github.com/lixiny/manotorch.git
+	branch = dev
+[submodule "thirdparty/pyrender"]
+	path = thirdparty/pyrender
+	url = https://github.com/kelvin34501/pyrender.git
+	branch = dev
+[submodule "thirdparty/chumpy"]
+	path = thirdparty/chumpy
+	url = https://github.com/mattloper/chumpy.git
+[submodule "thirdparty/config_reg"]
+	path = thirdparty/config_reg
+	url = https://github.com/kelvin34501/config_reg.git
+[submodule "thirdparty/chamfer_distance"]
+	path = thirdparty/chamfer_distance
+	url = https://github.com/otaheri/chamfer_distance.git

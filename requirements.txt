@@ -1,0 +1,53 @@
+# env
+pysocks
+cython
+pip-tools>=7.0.0
+# basic
+typing_extensions>=4.8.0
+numpy
+scipy
+zarr
+pillow
+matplotlib
+plotly
+kaleido
+wordcloud
+opencv-contrib-python
+open3d==0.16.0
+trimesh[easy]
+imageio
+scikit-image
+termcolor
+tqdm
+# c3d
+c3d
+# sdf
+numba>=0.57.1
+pysdf
+# distance3d-gjk
+distance3d
+# pyrender
+pyopengl>=3.1.6
+pyopengl-accelerate>=3.1.6
+-e ./thirdparty/pyrender
+# torch
+#--extra-index-url https://download.pytorch.org/whl/cu116
+torch@https://download.pytorch.org/whl/cu116/torch-1.13.0%2Bcu116-cp310-cp310-linux_x86_64.whl#sha256=31218793334775bc63af95e1ea3b18694eaa902aeea5fd9b3215abaf22eafad0
+torchvision@https://download.pytorch.org/whl/cu116/torchvision-0.14.0%2Bcu116-cp310-cp310-linux_x86_64.whl#sha256=eb95ba2c2f15e7bae2c2d98a8bde5bf0be1a1c170c81948151ea64868ed0e987
+webdataset
+# layer
+-e ./thirdparty/chumpy
+-e ./thirdparty/manotorch
+-f https://dl.fbaipublicfiles.com/pytorch3d/packaging/wheels/py310_cu116_pyt1130/download.html pytorch3d==0.7.2
+-f https://nvidia-kaolin.s3.us-east-2.amazonaws.com/torch-1.13.0_cu116.html kaolin==0.14.0
+# gui
+pyside6
+# pymeshlab
+pymeshlab==2022.2.post2
+# app
+mediapipe
+datasets[vision]
+# personal repo
+-e ./thirdparty/config_reg
+# package
+-e .
