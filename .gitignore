@@ -131,10 +131,7 @@ venv.bak/
 /tmp
 
 # whitelist /asset/markerset
-!/asset/markerset
-/asset/markerset/*.pkl
-!/asset/realsense
-/asset/realsense/calib/*/*.pkl
+!/asset/smplx_extra
 
 # dev requirements
 # requirements.txt

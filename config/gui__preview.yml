@@ -1,0 +1,5 @@
+viz:
+  stream_prefix: data/data
+  anno_prefix: data/anno_preview
+  object_prefix: data/object_preview
+  program_prefix: data/program
