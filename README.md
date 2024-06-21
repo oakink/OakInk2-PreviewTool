@@ -8,9 +8,9 @@
     ```
     data
     |-- data
-    |   `--- scene_0x__y00z++00000000000000000000__YYYY-mm-dd-HH-MM-SS
+    |   `-- scene_0x__y00z++00000000000000000000__YYYY-mm-dd-HH-MM-SS
     |-- anno_preview
-    |   `--- scene_0x__y00z++00000000000000000000__YYYY-mm-dd-HH-MM-SS.pkl
+    |   `-- scene_0x__y00z++00000000000000000000__YYYY-mm-dd-HH-MM-SS.pkl
     |-- object_preview
     `-- program
     ```
@@ -53,9 +53,21 @@
         pip install -r requirements.txt
         ```
 
-3. Launch the preview tool:
+3. Download the [SMPL-X model](https://smpl-x.is.tue.mpg.de/download.php)(version v1.1) and place the files at `asset/smplx_v1_1`.
+    
+    The directory structure should be like:
+    ```
+    asset
+    `-- smplx_v1_1
+       `-- models
+            |-- SMPLX_NEUTRAL.npz
+            `-- SMPLX_NEUTRAL.pkl
+    ```
+
+
+4. Launch the preview tool:
     ```bash
     python -m launch.viz.gui --cfg config/gui__preview.yml
     ```
 
-4. (Optional) View the introductory video on [youtube](https://www.youtube.com/watch?v=Xtk07q5HiOg).
+5. (Optional) View the introductory video on [youtube](https://www.youtube.com/watch?v=Xtk07q5HiOg).
