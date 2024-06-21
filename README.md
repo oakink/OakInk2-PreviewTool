@@ -1,5 +1,7 @@
 # OakInk2-Preview-Tool
 
+![oakink2_preview_tool](./doc/oakink2_preview_tool.gif)
+
 1. Setup dataset files.
 
     Download tarballs from [huggingface](https://huggingface.co/datasets/kelvin34501/OakInk-v2).
