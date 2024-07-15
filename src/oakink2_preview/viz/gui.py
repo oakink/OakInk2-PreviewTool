@@ -8,6 +8,7 @@ import pickle
 from matplotlib import pyplot as plt
 from PySide6 import QtCore, QtWidgets, QtGui
 from PySide6.QtGui import QImage, QPixmap
+import networkx as nx
 
 from ..transform.transform_np import inv_transf_np, transf_point_array_np, project_point_array_np, assemble_T_np
 from ..transform.rotation_np import rotvec_to_rotmat_np, rotmat_to_rotvec_np
@@ -17,6 +18,8 @@ from ..util.vis_pyrender_util import PyMultiObjRenderer
 from ..util.vis_cv2_util import combine_view
 from ..layer import smplx
 from ..util.hash_util import hash_str
+from ..dataset.program import seg_key_pair_to_frame_range, suffix_affordance_primitive_segment
+from .network_graph_widget import NetworkGraphWidget
 
 SMPLX_ROT_MODE = "quat"
 SMPLX_DIM_SHAPE_ALL = 300
@@ -97,6 +100,9 @@ class MainWindow(QtWidgets.QWidget):
         self.curr_frame_data = None
         self.curr_frame_id = None
         self.curr_frame_img = None
+
+        self.curr_pdg_node_map = None
+        self.curr_rev_pdg_node_map = None
 
         # set window title
         self.setWindowTitle("OakInk2-PreviewTool")
@@ -188,6 +194,7 @@ class MainWindow(QtWidgets.QWidget):
         self.widget_frame_show.setBackgroundRole(QtGui.QPalette.Base)
         self.widget_frame_show.setMinimumWidth(848)
 
+        # panel right (0)
         self.widget_label_scenario = QtWidgets.QLabel()
         self.widget_label_scenario.setText("scenario: ")
         self.widget_label_scenario.setMinimumWidth(100)
@@ -234,43 +241,71 @@ class MainWindow(QtWidgets.QWidget):
         self.widget_label_primitive_range_alt_rh.setMinimumWidth(100)
         self.widget_label_primitive_range_alt_rh.setWordWrap(True)
 
-        self.widget_panel_right = QtWidgets.QWidget()
-        self.layout_panel_right = QtWidgets.QVBoxLayout()
-        self.layout_panel_right.addWidget(self.widget_label_scenario)
-        self.layout_panel_right.addWidget(self.widget_label_target)
+        self.widget_panel_right_0 = QtWidgets.QWidget()
+        self.layout_panel_right_0 = QtWidgets.QVBoxLayout()
+        self.layout_panel_right_0.addWidget(self.widget_label_scenario)
+        self.layout_panel_right_0.addWidget(self.widget_label_target)
         _line = QtWidgets.QFrame()
         _line.setFrameShape(QtWidgets.QFrame.Shape.HLine)
         _line.setFrameShadow(QtWidgets.QFrame.Shadow.Sunken)
-        self.layout_panel_right.addWidget(_line)
-        self.layout_panel_right.addWidget(self.widget_label_primitive_id)
-        self.layout_panel_right.addWidget(self.widget_label_primitive_text)
-        self.layout_panel_right.addWidget(self.widget_label_primitive_range_lh)
-        self.layout_panel_right.addWidget(self.widget_label_primitive_id_lh)
-        self.layout_panel_right.addWidget(self.widget_label_primitive_range_rh)
-        self.layout_panel_right.addWidget(self.widget_label_primitive_id_rh)
+        self.layout_panel_right_0.addWidget(_line)
+        self.layout_panel_right_0.addWidget(self.widget_label_primitive_id)
+        self.layout_panel_right_0.addWidget(self.widget_label_primitive_text)
+        self.layout_panel_right_0.addWidget(self.widget_label_primitive_range_lh)
+        self.layout_panel_right_0.addWidget(self.widget_label_primitive_id_lh)
+        self.layout_panel_right_0.addWidget(self.widget_label_primitive_range_rh)
+        self.layout_panel_right_0.addWidget(self.widget_label_primitive_id_rh)
         _line = QtWidgets.QFrame()
         _line.setFrameShape(QtWidgets.QFrame.Shape.HLine)
         _line.setFrameShadow(QtWidgets.QFrame.Shadow.Sunken)
-        self.layout_panel_right.addWidget(_line)
-        self.layout_panel_right.addWidget(self.widget_label_primitive_id_alt)
-        self.layout_panel_right.addWidget(self.widget_label_primitive_text_alt)
-        self.layout_panel_right.addWidget(self.widget_label_primitive_range_alt_lh)
-        self.layout_panel_right.addWidget(self.widget_label_primitive_id_alt_lh)
-        self.layout_panel_right.addWidget(self.widget_label_primitive_range_alt_rh)
-        self.layout_panel_right.addWidget(self.widget_label_primitive_id_alt_rh)
+        self.layout_panel_right_0.addWidget(_line)
+        self.layout_panel_right_0.addWidget(self.widget_label_primitive_id_alt)
+        self.layout_panel_right_0.addWidget(self.widget_label_primitive_text_alt)
+        self.layout_panel_right_0.addWidget(self.widget_label_primitive_range_alt_lh)
+        self.layout_panel_right_0.addWidget(self.widget_label_primitive_id_alt_lh)
+        self.layout_panel_right_0.addWidget(self.widget_label_primitive_range_alt_rh)
+        self.layout_panel_right_0.addWidget(self.widget_label_primitive_id_alt_rh)
         _line = QtWidgets.QFrame()
         _line.setFrameShape(QtWidgets.QFrame.Shape.HLine)
         _line.setFrameShadow(QtWidgets.QFrame.Shadow.Sunken)
-        self.layout_panel_right.addWidget(_line)
+        self.layout_panel_right_0.addWidget(_line)
 
-        self.layout_panel_right.addStretch()
-        self.widget_panel_right.setLayout(self.layout_panel_right)
+        self.layout_panel_right_0.addStretch()
+        self.widget_panel_right_0.setLayout(self.layout_panel_right_0)
+
+        # panel right (1)
+        self.widget_nx_graph = NetworkGraphWidget()
+        self.widget_nx_graph.nodeClicked.connect(self.widget_graph_node_clicked)
+
+        self.widget_label_initial_condition = QtWidgets.QLabel()
+        self.widget_label_initial_condition.setMinimumWidth(100)
+        self.widget_label_initial_condition.setWordWrap(True)
+
+        _v_splitter = QtWidgets.QSplitter(QtCore.Qt.Vertical)
+        _v_splitter.addWidget(self.widget_nx_graph)
+        _v_splitter.addWidget(self.widget_label_initial_condition)
+
+        self.widget_panel_right_1 = QtWidgets.QWidget()
+        self.layout_panel_right_1 = QtWidgets.QVBoxLayout()
+        self.layout_panel_right_1.addWidget(_v_splitter)
+
+        self.layout_panel_right_1.addStretch()
+        self.widget_panel_right_1.setLayout(self.layout_panel_right_1)
+
+        # panel
+        self.widget_panel_right = QtWidgets.QTabWidget()
+        self.widget_panel_right.addTab(self.widget_panel_right_0, "program")
+        self.widget_panel_right.addTab(self.widget_panel_right_1, "pdg & init")
 
         splitter = QtWidgets.QSplitter(QtCore.Qt.Horizontal)
         splitter.addWidget(self.widget_model_table)
         splitter.addWidget(self.widget_frame_show)
         splitter.addWidget(self.widget_panel_right)
         splitter.splitterMoved.connect(self.widget_splitter_moved)
+        splitter.setSizePolicy(QtWidgets.QSizePolicy.Policy.Expanding, QtWidgets.QSizePolicy.Policy.Expanding)
+        # set default ratio: 0.25, 0.5, 0.25
+        _w = splitter.width()
+        splitter.setSizes([_w // 4, _w // 2, _w // 4])
         splitter.setHandleWidth(20)
 
         self.layout_main_layout = QtWidgets.QHBoxLayout()
@@ -426,6 +461,37 @@ class MainWindow(QtWidgets.QWidget):
         self.widget_label_scenario.setText(f"scenario: {self.scenario}")
         self.widget_label_target.setText(f"target: {self.target}")
 
+        # update graph
+        _fpath = os.path.join(self.program_prefix, "pdg", f"{self.process_def_str}.json")
+        with open(_fpath, "r") as ifs:
+            _g_info = json.load(ifs)
+            self.curr_pdg_node_map = suffix_affordance_primitive_segment(self.program_info)
+            self.curr_rev_pdg_node_map = {v: k for k, v in self.curr_pdg_node_map.items()}
+            _g = nx.DiGraph()
+            for k in _g_info["id_map"]:
+                _g.add_node(self.curr_pdg_node_map[k])
+            _rev_id_map = {v: k for k, v in _g_info["id_map"].items()}
+            for e in _g_info["e"]:
+                _e_from, _e_to = e
+                _seg_from, _seg_to = _rev_id_map[_e_from], _rev_id_map[_e_to]
+                _g.add_edge(self.curr_pdg_node_map[_seg_from], self.curr_pdg_node_map[_seg_to])
+
+        self.widget_nx_graph.set_graph(_g)
+
+        # update initial conditions (if applicible)
+        _fpath = os.path.join(self.program_prefix, "initial_condition_info", f"{self.process_def_str}.json")
+        if os.path.exists(_fpath):
+            with open(_fpath, "r") as ifs:
+                _i_info = json.load(ifs)
+            msg = []
+            msg.append("initial condition:")
+            msg.extend(f"\t{el}" for el in _i_info["initial_condition"])
+            msg.append("")
+            msg.append("recipe:")
+            msg.extend(f"\t{el}" for el in _i_info["recipe"])
+            msg = "\n".join(msg)
+            self.widget_label_initial_condition.setText(msg)
+
     @QtCore.Slot()
     def widget_button_opennew_click(self):
         file_dialog = QtWidgets.QFileDialog()
@@ -442,6 +508,20 @@ class MainWindow(QtWidgets.QWidget):
     def widget_button_reload_click(self):
         if self.stream_filedir is not None:
             self.set_stream(self.stream_filedir)
+
+    @QtCore.Slot()
+    def widget_graph_node_clicked(self, node):
+        seg_pair = self.curr_rev_pdg_node_map[node]
+        seg_pair = eval(seg_pair, None, None)
+        seg_frame_range = seg_key_pair_to_frame_range(seg_pair)
+        value = seg_frame_range[0]
+        if value == self.curr_frame_offset:
+            return
+        else:
+            # find the nearest frame
+            value_offset = np.argmin(np.abs(np.array(self.frame_list) - value))
+            self.curr_frame_offset = value_offset
+            self.update_stream_data()
 
     @QtCore.Slot()
     def widget_frame_ind_return_pressed(self):
@@ -573,6 +653,7 @@ class MainWindow(QtWidgets.QWidget):
             h = self.widget_frame_show.height()
             self.widget_frame_show.setPixmap(pixmap.scaled(w, h, QtCore.Qt.AspectRatioMode.KeepAspectRatio))
 
+    @QtCore.Slot()
     def widget_splitter_moved(self, event):
         if self.curr_frame_img is not None:
             image = self.curr_frame_img

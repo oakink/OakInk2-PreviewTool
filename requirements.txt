@@ -17,6 +17,7 @@ open3d==0.16.0
 trimesh[easy]
 imageio
 scikit-image
+networkx
 termcolor
 tqdm
 # c3d

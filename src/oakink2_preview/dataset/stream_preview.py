@@ -97,7 +97,7 @@ class StreamDataset:
 
         res = self.ret_type(**res_content)
         return res
-    
+
     def __len__(self) -> int:
         return self.len
 
