@@ -153,7 +153,7 @@ def quat_to_rotmat_np(quat: np.ndarray) -> np.ndarray:
         ),
         -1,
     )
-    return o.reshape(quat.shape[:-1] + (3, 3))
+    return o.reshape(quat.shape[:-1] + (3, 3)).astype(quat.dtype)
 
 
 def rotmat_to_quat_np(rotmat: np.ndarray) -> np.ndarray:

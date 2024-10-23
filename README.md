@@ -1,4 +1,4 @@
-# OakInk2-Preview-Tool
+# OakInk2-Toolkit & Preview-Tool
 
 ![oakink2_preview_tool](./doc/oakink2_preview_tool.gif)
 

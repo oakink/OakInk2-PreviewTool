@@ -128,6 +128,14 @@ def transf_to_posevec_np(transf: np.ndarray) -> np.ndarray:
     return posevec
 
 
+def posevec_to_transf_np(posevec):
+    tsl = posevec[:3]
+    rot = posevec[3:]
+    rotmat = quat_to_rotmat_np(rot)
+    transf = assemble_T_np(tsl, rotmat)
+    return transf
+
+
 def posevec_diff_np(posevec_a, posevec_b):
     pos_a = posevec_a[:3]
     quat_a = posevec_a[3:]

@@ -49,7 +49,7 @@ def normalize_quat(quat: torch.Tensor, eps: Optional[float] = None) -> torch.Ten
     if eps is None:
         eps = torch.finfo(quat.dtype).eps
     quat_norm = torch.norm(quat, p=2, dim=-1, keepdim=True)
-    quat_normalized = quat / torch.max(quat_norm, eps)
+    quat_normalized = quat / torch.clamp(quat_norm, min=eps)
     # standardize the quaternion to have non-negative real part
     return standardize_quat(quat_normalized)
 
