@@ -14,6 +14,7 @@ if typing.TYPE_CHECKING:
     from typing import Optional
 
 from . import meta
+from . import tool
 from . import program
 from .affordance import OakInk2__Affordance
 from .primitive_task import OakInk2__PrimitiveTask
@@ -58,7 +59,8 @@ class OakInk2__Dataset(torch.utils.data.Dataset):
 
         self.data_prefix = os.path.join(self.dataset_prefix, "data")
         self.anno_prefix = os.path.join(self.dataset_prefix, "anno_preview")
-        self.obj_prefix = os.path.join(self.dataset_prefix, "obj_preview")
+        self.obj_prefix = os.path.join(self.dataset_prefix, "object_preview")
+        self.obj_model_prefix = os.path.join(self.obj_prefix, "align_ds")
         self.program_prefix = os.path.join(self.dataset_prefix, "program")
         self.program_extension_prefix = os.path.join(self.dataset_prefix, "program_extension")
 
@@ -69,16 +71,20 @@ class OakInk2__Dataset(torch.utils.data.Dataset):
         self.desc_info_filedir = os.path.join(self.program_prefix, "desc_info")
         self.initial_condition_info_filedir = os.path.join(self.program_prefix, "initial_condition_info")
 
+        obj_desc_filepath = os.path.join(self.obj_prefix, "obj_desc.json")
+        self.obj_desc = load_json(obj_desc_filepath)
+
         self.all_seq_list = list(self.task_target.keys())
 
         # mode
         self.return_instantiated = return_instantiated
 
+        # cache
+        self.obj_cache = {}
+
     def __getitem__(self, index):
         seq_key = self.all_seq_list[index]
-        res = self.load_complex_task(seq_key)
-        if self.return_instantiated:
-            self.instantiate_complex_task(res)
+        res = self.load_complex_task(seq_key, self.return_instantiated)
         return res
 
     def __len__(self):
@@ -86,26 +92,65 @@ class OakInk2__Dataset(torch.utils.data.Dataset):
 
     def instantiate_affordance(self, affordance_data: OakInk2__Affordance):
         if not affordance_data.instantiated:
-            affordance_data.obj_part_mesh = {}
-            for obj_part_id in affordance_data.obj_part_id:
-                obj_part_mesh = load_obj(self.obj_prefix, obj_part_id)
-                affordance_data.obj_part_mesh[obj_part_id] = obj_part_mesh
+            if not affordance_data.is_part:
+                affordance_data.obj_mesh = {}
+                for obj_part_id in affordance_data.obj_part_id:
+                    if obj_part_id not in self.obj_cache:
+                        self.obj_cache[obj_part_id] = load_obj(self.obj_model_prefix, obj_part_id)
+                    obj_part_mesh = self.obj_cache[obj_part_id]
+                    affordance_data.obj_mesh[obj_part_id] = obj_part_mesh
+            else:
+                obj_part_id = affordance_data.obj_id
+                if obj_part_id not in self.obj_cache:
+                    self.obj_cache[obj_part_id] = load_obj(self.obj_model_prefix, obj_part_id)
+                obj_part_mesh = self.obj_cache[obj_part_id]
+                affordance_data.obj_mesh = obj_part_mesh
             affordance_data.instantiated = True
         return affordance_data
 
     def instantiate_primitive_task(
-        self, primitive_task_data: OakInk2__PrimitiveTask, complex_task_data: Optional[OakInk2__ComplexTask] = None
+        self,
+        primitive_task_data: OakInk2__PrimitiveTask,
+        complex_task_data: Optional[OakInk2__ComplexTask] = None,
     ):
         if not primitive_task_data.instantiated:
-            if complex_task_data is not None and complex_task_data.instantiated:
-                # use frame_range_lh and frame_range_rh to quick index the tensor
-                # and pad with zeros to be the same length with frame_range
-                frame_range_lh, frame_range_rh = primitive_task_data.frame_range_lh, primitive_task_data.frame_range_rh
+            if complex_task_data is None or not complex_task_data.instantiated:
+                complex_task_data = self.load_complex_task(primitive_task_data.seq_key, return_instantiated=True)
+            # use frame_range_lh and frame_range_rh to quick index the tensor
+            # and pad with zeros to be the same length with frame_range
+            frame_range = primitive_task_data.frame_range
+            frame_range_lh, frame_range_rh = primitive_task_data.frame_range_lh, primitive_task_data.frame_range_rh
+            frame_list = list(range(frame_range[0], frame_range[1]))
+            smplx_param, _ = tool.index_param(complex_task_data.smplx_param, frame_list)
+            if frame_range_lh is not None:
                 frame_list_lh = list(range(frame_range_lh[0], frame_range_lh[1]))
-                frame_list_rh = list(range(frame_range_rh[0], frame_range_rh[1]))
+                l_pad = max(0, frame_range_lh[0] - frame_range[0])
+                r_pad = max(0, frame_range[1] - frame_range_lh[1])
+                lh_param, lh_in_range_mask = tool.index_param(
+                    complex_task_data.lh_param, frame_list_lh, l_pad=l_pad, r_pad=r_pad
+                )
             else:
-                # load...
-                pass
+                lh_param, lh_in_range_mask = tool.zero_param(complex_task_data.lh_param, len(frame_list))
+            if frame_range_rh is not None:
+                frame_list_rh = list(range(frame_range_rh[0], frame_range_rh[1]))
+                l_pad = max(0, frame_range_rh[0] - frame_range[0])
+                r_pad = max(0, frame_range[1] - frame_range_rh[1])
+                rh_param, rh_in_range_mask = tool.index_param(
+                    complex_task_data.rh_param, frame_list_rh, l_pad=l_pad, r_pad=r_pad
+                )
+            else:
+                rh_param, rh_in_range_mask = tool.zero_param(complex_task_data.rh_param, len(frame_list))
+            obj_transf = {}
+            for obj_id in primitive_task_data.task_obj_list:
+                obj_transf[obj_id] = complex_task_data.obj_transf[obj_id][frame_list]
+            # assignment
+            primitive_task_data.smplx_param = smplx_param
+            primitive_task_data.lh_param = lh_param
+            primitive_task_data.rh_param = rh_param
+            primitive_task_data.lh_in_range_mask = lh_in_range_mask
+            primitive_task_data.rh_in_range_mask = rh_in_range_mask
+            primitive_task_data.obj_transf = obj_transf
+            # conclude
             primitive_task_data.instantiated = True
         return primitive_task_data
 
@@ -257,14 +302,41 @@ class OakInk2__Dataset(torch.utils.data.Dataset):
             frame_range=frame_range,
             scene_obj_list=scene_obj_list,
         )
+        if return_instantiated:
+            self.instantiate_complex_task(res)
         return res
 
-    def load_primitive_task(self, complex_task_data, primitive_identifier=None, return_instantiated=None):
+    def load_primitive_task(
+        self, complex_task_data: OakInk2__ComplexTask, primitive_identifier=None, return_instantiated=None
+    ):
         # if primitive_identifier is None, load all primitive tasks
         # else if it is a list, load the primitive tasks with the identifiers in the list
         # else if it is a string, load the primitive task with the identifier
         if return_instantiated is None:
             return_instantiated = self.return_instantiated
+        # instantiate complex task if not already
+        if return_instantiated and not complex_task_data.instantiated:
+            self.instantiate_complex_task(complex_task_data)
+        # determine load list
+        if primitive_identifier is None:
+            handle_list = complex_task_data.exec_path
+        elif isinstance(primitive_identifier, str):
+            handle_list = [primitive_identifier]
+        else:
+            handle_list = primitive_identifier
+
+        res = []
+        for p_ident in handle_list:
+            p_res = self._load_primitive_task_from_identifier(
+                complex_task_data.seq_key, p_ident, return_instantiated=return_instantiated
+            )
+            if return_instantiated:
+                p_res = self.instantiate_primitive_task(p_res, complex_task_data)
+            res.append(p_res)
+        if isinstance(primitive_identifier, str):
+            return res[0]
+        else:
+            return res
 
     def _load_primitive_task_from_def(
         self,
@@ -364,4 +436,35 @@ class OakInk2__Dataset(torch.utils.data.Dataset):
         )
 
     def load_affordance(self, obj_id, return_instantiated=None):
-        pass
+        if return_instantiated is None:
+            return_instantiated = self.return_instantiated
+
+        obj_name = self.obj_desc[obj_id]["obj_name"]
+        is_part = True  # TODO: CHECK IF OBJ_ID MAPS TO INSTANCE
+        obj_instance_id = None  # TODO:
+        obj_part_id = None  # TODO: pack the full_obj_id_map into json, for obj return a list of part
+
+        # TODO: instance-level and part-level affordance loading
+
+        res = OakInk2__Affordance(
+            obj_id=obj_id,
+            obj_name=obj_name,
+            is_part=is_part,
+            obj_instance_id=obj_instance_id,
+            obj_part_id=obj_part_id,
+        )
+        if return_instantiated:
+            self.instantiate_affordance(res)
+        return res
+
+    def load_affordance_part(self, affordance_data, return_instantiated=None):
+        if return_instantiated is None:
+            return_instantiated = self.return_instantiated
+
+        if affordance_data.is_part:
+            if return_instantiated:
+                affordance_data = self.instantiate_affordance(affordance_data)
+            return affordance_data
+        else:
+            # TODO: load each part
+            pass

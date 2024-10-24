@@ -33,7 +33,7 @@ class OakInk2__PrimitiveTask(NamedData):
 
     # field to be instantiated
     smplx_param: Optional[dict[int, dict[str, torch.Tensor]]] = None
-    lh_hand_param: Optional[dict[int, dict[str, torch.Tensor]]] = None
+    lh_param: Optional[dict[int, dict[str, torch.Tensor]]] = None
     rh_param: Optional[dict[int, dict[str, torch.Tensor]]] = None
     lh_in_range_mask: Optional[torch.Tensor] = None
     rh_in_range_mask: Optional[torch.Tensor] = None
