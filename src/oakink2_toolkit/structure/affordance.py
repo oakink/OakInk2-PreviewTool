@@ -2,7 +2,7 @@ from __future__ import annotations
 
 
 from typing import Optional, Union
-from .type_def import NamedData
+from ..type_def import NamedData
 import trimesh
 from dataclasses import dataclass
 

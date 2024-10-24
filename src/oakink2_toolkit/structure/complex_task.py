@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from typing import Optional
-from .type_def import NamedData
+from ..type_def import NamedData
 
 import numpy as np
 import torch

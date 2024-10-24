@@ -16,9 +16,9 @@ if typing.TYPE_CHECKING:
 from . import meta
 from . import tool
 from . import program
-from .affordance import OakInk2__Affordance
-from .primitive_task import OakInk2__PrimitiveTask
-from .complex_task import OakInk2__ComplexTask
+from .structure.affordance import OakInk2__Affordance
+from .structure.primitive_task import OakInk2__PrimitiveTask
+from .structure.complex_task import OakInk2__ComplexTask
 
 
 def load_obj(obj_prefix: str, obj_id: str):
@@ -144,6 +144,7 @@ class OakInk2__Dataset(torch.utils.data.Dataset):
             for obj_id in primitive_task_data.task_obj_list:
                 obj_transf[obj_id] = complex_task_data.obj_transf[obj_id][frame_list]
             # assignment
+            primitive_task_data.scene_obj_list = complex_task_data.scene_obj_list
             primitive_task_data.smplx_param = smplx_param
             primitive_task_data.lh_param = lh_param
             primitive_task_data.rh_param = rh_param
