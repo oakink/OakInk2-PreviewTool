@@ -28,9 +28,9 @@ def load_obj(obj_prefix: str, obj_id: str):
     obj_filename = candidate_list[0]
     obj_filepath = os.path.join(obj_filedir, obj_filename)
     if os.path.splitext(obj_filename)[-1] == ".obj":
-        mesh = trimesh.load_mesh(obj_filepath, process=False, skip_materials=True, force="mesh")
+        mesh = trimesh.load(obj_filepath, process=False, skip_materials=True, force="mesh")
     else:
-        mesh = trimesh.load(obj_filepath, process=False)
+        mesh = trimesh.load(obj_filepath, process=False, force="mesh")
     return mesh
 
 
@@ -47,6 +47,48 @@ def try_load_json(json_filepath: str):
     else:
         data = None
     return data
+
+
+def standardize_tuple(t):
+    return str(ast.literal_eval(t))
+
+
+def load_program_info(program_info_filepath: str):
+    program_info = load_json(program_info_filepath)
+    program_info = {standardize_tuple(k): v for k, v in program_info.items()}
+    return program_info
+
+
+def load_desc_info(desc_info_filepath: str):
+    desc_info = load_json(desc_info_filepath)
+    desc_info = {standardize_tuple(k): v for k, v in desc_info.items()}
+    return desc_info
+
+
+def fix_g_info(g_info, affordance_task_namemap):
+    # if all node in g_info is in affordance_task_namemap, then return g_info
+    # else, find all edges related to the node and contract it
+    node_to_contact = []
+    for k in g_info["id_map"]:
+        k = standardize_tuple(k)
+        if k not in affordance_task_namemap:
+            node_to_contact.append(k)
+    if len(node_to_contact) == 0:
+        return g_info
+
+    # contract the node
+    # the graph is directed, link in-edge's parent to out-edge's child
+    for node in node_to_contact:
+        node_id = g_info["id_map"][node]
+        in_edges = [e for e in g_info["e"] if e[1] == node_id]
+        out_edges = [e for e in g_info["e"] if e[0] == node_id]
+        for e in in_edges:
+            for e2 in out_edges:
+                g_info["e"].append((e[0], e2[1]))
+        g_info["e"] = [e for e in g_info["e"] if e[0] != node_id and e[1] != node_id]
+        g_info["id_map"] = {k: v for k, v in g_info["id_map"].items() if k != node}
+
+    return g_info
 
 
 class OakInk2__Dataset(torch.utils.data.Dataset):
@@ -142,6 +184,8 @@ class OakInk2__Dataset(torch.utils.data.Dataset):
                 rh_param, rh_in_range_mask = tool.zero_param(complex_task_data.rh_param, len(frame_list))
             obj_transf = {}
             for obj_id in primitive_task_data.task_obj_list:
+                if obj_id not in complex_task_data.obj_transf:
+                    continue
                 obj_transf[obj_id] = complex_task_data.obj_transf[obj_id][frame_list]
             # assignment
             primitive_task_data.scene_obj_list = complex_task_data.scene_obj_list
@@ -151,6 +195,18 @@ class OakInk2__Dataset(torch.utils.data.Dataset):
             primitive_task_data.lh_in_range_mask = lh_in_range_mask
             primitive_task_data.rh_in_range_mask = rh_in_range_mask
             primitive_task_data.obj_transf = obj_transf
+            # clean obj_list
+            primitive_task_data.task_obj_list = [
+                el for el in primitive_task_data.task_obj_list if el in primitive_task_data.obj_transf
+            ]
+            if primitive_task_data.lh_obj_list is not None:
+                primitive_task_data.lh_obj_list = [
+                    el for el in primitive_task_data.lh_obj_list if el in primitive_task_data.obj_transf
+                ]
+            if primitive_task_data.rh_obj_list is not None:
+                primitive_task_data.rh_obj_list = [
+                    el for el in primitive_task_data.rh_obj_list if el in primitive_task_data.obj_transf
+                ]
             # conclude
             primitive_task_data.instantiated = True
         return primitive_task_data
@@ -235,7 +291,7 @@ class OakInk2__Dataset(torch.utils.data.Dataset):
 
         # preparation
         program_info_filepath = os.path.join(self.program_info_filedir, f"{seq_token}.json")
-        program_info = load_json(program_info_filepath)
+        program_info = load_program_info(program_info_filepath)
         affordance_task_namemap = program.suffix_affordance_primitive_segment(program_info)
         transient_task_namemap = program.suffix_transient_primitive_segment(program_info)
         _full_task_namemap = {**affordance_task_namemap, **transient_task_namemap}
@@ -251,13 +307,16 @@ class OakInk2__Dataset(torch.utils.data.Dataset):
         exec_range_map = rev_full_task_namemap
         with open(os.path.join(self.pdg_filedir, f"{seq_token}.json"), "r") as ifs:
             _g_info = json.load(ifs)
+            _g_info = fix_g_info(_g_info, affordance_task_namemap)
             _g = nx.DiGraph()
             for k in _g_info["id_map"]:
+                k = standardize_tuple(k)
                 _g.add_node(affordance_task_namemap[k])
             _rev_id_map = {v: k for k, v in _g_info["id_map"].items()}
             for e in _g_info["e"]:
                 _e_from, _e_to = e
                 _seg_from, _seg_to = _rev_id_map[_e_from], _rev_id_map[_e_to]
+                _seg_from, _seg_to = standardize_tuple(_seg_from), standardize_tuple(_seg_to)
                 _g.add_edge(affordance_task_namemap[_seg_from], affordance_task_namemap[_seg_to])
         pdg = _g
 
@@ -326,10 +385,20 @@ class OakInk2__Dataset(torch.utils.data.Dataset):
         else:
             handle_list = primitive_identifier
 
+        # cache program info & desc info
+        program_info_filepath = os.path.join(self.program_info_filedir, f"{complex_task_data.seq_token}.json")
+        program_info = load_program_info(program_info_filepath)
+        desc_info_filepath = os.path.join(self.desc_info_filedir, f"{complex_task_data.seq_token}.json")
+        desc_info = load_desc_info(desc_info_filepath)
+
         res = []
         for p_ident in handle_list:
             p_res = self._load_primitive_task_from_identifier(
-                complex_task_data.seq_key, p_ident, return_instantiated=return_instantiated
+                complex_task_data.seq_key,
+                p_ident,
+                return_instantiated=return_instantiated,
+                program_info=program_info,
+                desc_info=desc_info,
             )
             if return_instantiated:
                 p_res = self.instantiate_primitive_task(p_res, complex_task_data)
@@ -354,10 +423,10 @@ class OakInk2__Dataset(torch.utils.data.Dataset):
         # preparation
         if program_info is None:
             program_info_filepath = os.path.join(self.program_info_filedir, f"{seq_token}.json")
-            program_info = load_json(program_info_filepath)
+            program_info = load_program_info(program_info_filepath)
         if desc_info is None:
             desc_info_filepath = os.path.join(self.desc_info_filedir, f"{seq_token}.json")
-            desc_info = load_json(desc_info_filepath)
+            desc_info = load_desc_info(desc_info_filepath)
         # get the program annotations
         frame_range_def_key = str(frame_range_def)
         program_item = program_info[frame_range_def_key]
@@ -415,7 +484,7 @@ class OakInk2__Dataset(torch.utils.data.Dataset):
         seq_token = seq_key.replace("/", "++")  # preparation
         if program_info is None:
             program_info_filepath = os.path.join(self.program_info_filedir, f"{seq_token}.json")
-            program_info = load_json(program_info_filepath)
+            program_info = load_program_info(program_info_filepath)
         affordance_task_namemap = program.suffix_affordance_primitive_segment(program_info)
         transient_task_namemap = program.suffix_transient_primitive_segment(program_info)
         _full_task_namemap = {**affordance_task_namemap, **transient_task_namemap}

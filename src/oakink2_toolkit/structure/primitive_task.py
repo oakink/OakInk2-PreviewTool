@@ -37,4 +37,4 @@ class OakInk2__PrimitiveTask(NamedData):
     rh_param: Optional[dict[int, dict[str, torch.Tensor]]] = None
     lh_in_range_mask: Optional[torch.Tensor] = None
     rh_in_range_mask: Optional[torch.Tensor] = None
-    obj_transf: Optional[dict[str, dict[int, torch.Tensor]]] = None
+    obj_transf: Optional[dict[str, dict[int, np.ndarray]]] = None

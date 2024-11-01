@@ -36,4 +36,4 @@ class OakInk2__ComplexTask(NamedData):
     smplx_param: Optional[dict[int, dict[str, torch.Tensor]]] = None
     lh_param: Optional[dict[int, dict[str, torch.Tensor]]] = None
     rh_param: Optional[dict[int, dict[str, torch.Tensor]]] = None
-    obj_transf: Optional[dict[str, dict[int, torch.Tensor]]] = None
+    obj_transf: Optional[dict[str, dict[int, np.ndarray]]] = None
