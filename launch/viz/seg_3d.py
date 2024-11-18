@@ -10,6 +10,10 @@ import itertools
 import pickle
 import json
 import trimesh
+import hashlib
+from matplotlib import pyplot as plt
+
+cm = plt.get_cmap("turbo")
 
 from config_reg import ConfigRegistry, ConfigEntrySource, ConfigEntryCallback
 from config_reg import ConfigEntryCommandlineBoolPattern, ConfigEntryCommandlineSeqPattern
@@ -36,6 +40,10 @@ CURR_WORKING_DIR = os.getcwd()
 
 # global vars
 _logger = logging.getLogger(__name__)
+
+
+def hash_str(attr_str, trunc=20):
+    return hashlib.sha256(attr_str.encode()).hexdigest()[:trunc]
 
 
 def reg_entry(config_reg: ConfigRegistry):
@@ -68,6 +76,15 @@ def reg_entry(config_reg: ConfigRegistry):
         callback=abspath_callback,
         required=True,
         default=os.path.join(WS_DIR, "asset", "mano_v1_2"),
+    )
+
+    config_reg.register(
+        "enable_background",
+        category=bool,
+        source=ConfigEntrySource.COMMANDLINE_OVER_CONFIG,
+        cmdpattern=ConfigEntryCommandlineBoolPattern.ON_OFF,
+        required=True,
+        default=False,
     )
 
 
@@ -137,7 +154,12 @@ def run(run_cfg):
     # load all objects in the scene
     obj_map = {}
     for obj_part_id in complex_task_data.scene_obj_list:
-        obj_map[obj_part_id] = oakink2_dataset.load_affordance(obj_part_id).obj_mesh
+        affordance_data = oakink2_dataset.load_affordance(obj_part_id)
+        _color = (np.array(cm(int(hash_str(obj_part_id), 16) % 256))[0:3] ** 1.2) * 0.8 + 0.2
+        _v = affordance_data.obj_mesh.vertices
+        _f = affordance_data.obj_mesh.faces
+        _vc = _color.reshape((1, 3)).repeat(_v.shape[0], axis=0)
+        obj_map[obj_part_id] = trimesh.Trimesh(vertices=_v, faces=_f, vertex_colors=_vc, process=False)
 
     # load cam_extr and cam_intr
     anno_filepath = os.path.join(oakink2_dataset.anno_prefix, f"{complex_task_data.seq_token}.pkl")
@@ -145,6 +167,9 @@ def run(run_cfg):
         anno_info = pickle.load(ifs)
     cam_intr = next(iter(anno_info["cam_intr"][CAM_NAME].values()))
     cam_extr = next(iter(anno_info["cam_extr"][CAM_NAME].values()))
+    frame_id_list = anno_info["frame_id_list"]
+    cam_def = anno_info["cam_def"]
+    cam_revdef = {v: k for k, v in cam_def.items()}
 
     # create renderer
     renderer = PyMultiObjRenderer(
@@ -194,9 +219,20 @@ def run(run_cfg):
             rh_out["v"] = v_traj
         # viz
         viz_step = 60
-        for fid in range(ptask_data.frame_range[0], ptask_data.frame_range[1], viz_step):
+        if run_cfg["enable_background"]:
+            fid_list = [
+                frame_id_list[np.argmin(np.abs(np.array(frame_id_list) - _f))]
+                for _f in range(ptask_data.frame_range[0], ptask_data.frame_range[1], viz_step)
+            ]
+        else:
+            fid_list = range(ptask_data.frame_range[0], ptask_data.frame_range[1], viz_step)
+        for fid in fid_list:
             extra_mesh = []
             offset = fid - ptask_data.frame_range[0]
+            if run_cfg["enable_background"]:
+                # use image cam_extr rather than constant for background fusing
+                cam_extr = anno_info["cam_extr"][CAM_NAME][fid]
+
             # index obj
             obj_pose_map = {}
             for obj_id in ptask_data.task_obj_list:
@@ -212,12 +248,21 @@ def run(run_cfg):
                 offset_rh = fid - ptask_data.frame_range_rh[0]
                 v_rh = rh_out["v"][offset_rh]
                 extra_mesh.append(trimesh.Trimesh(vertices=v_rh, faces=hand_faces_rh))
-            img = renderer(
-                obj_pose_map=obj_pose_map,
-                extra_mesh=extra_mesh,
-                stick=True,
-                background=np.ones((VIDEO_SHAPE[1], VIDEO_SHAPE[0], 3), dtype=np.uint8) * 255,
-            )
+
+            if run_cfg["enable_background"]:
+                bg = cv2.imread(
+                    os.path.join(
+                        oakink2_dataset.data_prefix, complex_task_data.seq_token, cam_revdef[CAM_NAME], f"{fid:0>6}.png"
+                    )
+                )
+                bg_param = {
+                    "background": bg,
+                }
+            else:
+                bg_param = dict(
+                    background=np.ones((VIDEO_SHAPE[1], VIDEO_SHAPE[0], 3), dtype=np.uint8) * 255,
+                )
+            img = renderer(obj_pose_map=obj_pose_map, extra_mesh=extra_mesh, stick=True, **bg_param)
             img = caption_combined_view(img, ptask_data.task_desc)
 
             while True:
