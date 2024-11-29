@@ -1,7 +1,5 @@
 # OakInk2 Toolkit & Preview-Tool
 
-![oakink2_preview_tool](./doc/oakink2_preview_tool.gif)
-
 ## Setup dataset files.
 
     Download tarballs from [huggingface](https://huggingface.co/datasets/kelvin34501/OakInk-v2).
@@ -42,6 +40,8 @@
 
 ## OakInk2 Preview-Tool
 
+![oakink2_preview_tool](./doc/oakink2_preview_tool.gif)
+
 1. Setup the enviroment.
 
     1. Create a virtual env of python 3.10. This can be done by either `conda` or python package `venv`.
@@ -64,7 +64,7 @@
             Then create a virtual environment:
 
             ```bash
-            python -m venv .venv --prompt mocap_blender
+            python -m venv .venv --prompt oakink2_preview
             . .venv/bin/activate
             ```
     
@@ -101,15 +101,47 @@
     oakink2_viz_gui --cfg config/gui_preview.yml
     ```
 
-4. (Optional) Preview task in segments (press enter to proceed).
+4. (Optional) Preview task in segments.
 
-    ```bash
-    python -m oakink2_preview.launch.viz.seg_3d --seq_key scene_0x__y00z/00000000000000000000__YYYY-mm-dd-HH-MM-SS
-    ```
+    1. Download the [MANO model](https://mano.is.tue.mpg.de)(version v1.2) and place the files at `asset/mano_v1_2`.
 
-    Or use the shortcut:
-    ```bash
-    oakink2_viz_seg3d --seq_key scene_0x__y00z/00000000000000000000__YYYY-mm-dd-HH-MM-SS
-    ```
+        The directory structure should be like:
+        ```
+        asset
+        `-- mano_v1_2
+            `-- models
+                |-- MANO_LEFT.pkl
+                `-- MANO_RIGHT.pkl
+        ```
+
+    2. Launch the preview segment tool (press enter to proceed). Note `seq_key` should contain '/' rather than '++' as directory separator.
+
+        ```bash
+        python -m oakink2_preview.launch.viz.seg_3d --seq_key scene_0x__y00z/00000000000000000000__YYYY-mm-dd-HH-MM-SS
+        ```
+
+        Or use the shortcut:
+        ```bash
+        oakink2_viz_seg3d --seq_key scene_0x__y00z/00000000000000000000__YYYY-mm-dd-HH-MM-SS
+        ```
 
 5. (Optional) View the introductory video on [youtube](https://www.youtube.com/watch?v=Xtk07q5HiOg).
+
+
+## Dataset Format
+
++ `data/scene_0x__y00z++00000000000000000000__YYYY-mm-dd-HH-MM-SS`
++ `anno/scene_0x__y00z++00000000000000000000__YYYY-mm-dd-HH-MM-SS.pkl`
+
+    This pickle stores a dictonary under the following format:
+    ```
+    {
+
+    }
+    ```
++ `object_{raw,scan}/obj_desc.json`
++ `object_{raw,scan}/align_ds`
++ `program/desc_info/scene_0x__y00z++00000000000000000000__YYYY-mm-dd-HH-MM-SS.json`
++ `program/initial_condition_info/scene_0x__y00z++00000000000000000000__YYYY-mm-dd-HH-MM-SS.json`
++ `program/pdg/scene_0x__y00z++00000000000000000000__YYYY-mm-dd-HH-MM-SS.json`
++ `program/program_info/scene_0x__y00z++00000000000000000000__YYYY-mm-dd-HH-MM-SS.json`
