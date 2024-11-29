@@ -77,7 +77,7 @@
 
         Use `pip` to install the packages:
         ```bash
-        pip install -r requirements.txt
+        pip install -r req_preview.txt
         ```
 
 2. Download the [SMPL-X model](https://smpl-x.is.tue.mpg.de/download.php)(version v1.1) and place the files at `asset/smplx_v1_1`.
