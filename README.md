@@ -241,4 +241,4 @@
         "e": list[list[int]],               # list of edges
     }
     ```
-    Note that some filtering is required to properly load pdg data. See [oakink2_toolkit/dataset.py#L310-L323](src/oakink2_toolkit/dataset.py) for contracting excessive nodes.
+    <!-- Note that some filtering is required to properly load pdg data. See [oakink2_toolkit/dataset.py#L310-L323](src/oakink2_toolkit/dataset.py) for contracting excessive nodes. -->
