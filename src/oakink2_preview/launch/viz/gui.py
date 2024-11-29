@@ -37,6 +37,7 @@ def reg_entry(config_reg: ConfigRegistry):
         category=str,
         source=ConfigEntrySource.COMMANDLINE_OVER_CONFIG,
         callback=abspath_callback,
+        required=True,
     )
 
     config_reg.register(
@@ -45,6 +46,7 @@ def reg_entry(config_reg: ConfigRegistry):
         category=str,
         source=ConfigEntrySource.COMMANDLINE_OVER_CONFIG,
         callback=abspath_callback,
+        required=True,
     )
 
     config_reg.register(
@@ -53,6 +55,7 @@ def reg_entry(config_reg: ConfigRegistry):
         category=str,
         source=ConfigEntrySource.COMMANDLINE_OVER_CONFIG,
         callback=abspath_callback,
+        required=True,
     )
 
     config_reg.register(
@@ -61,6 +64,7 @@ def reg_entry(config_reg: ConfigRegistry):
         category=str,
         source=ConfigEntrySource.COMMANDLINE_OVER_CONFIG,
         callback=abspath_callback,
+        required=True,
     )
 
 

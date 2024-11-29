@@ -35,7 +35,7 @@ from manotorch.manolayer import ManoLayer, MANOOutput
 PROG = os.path.splitext(os.path.basename(__file__))[0]
 THIS_FILE = os.path.normcase(os.path.normpath(__file__))
 THIS_DIR = os.path.dirname(THIS_FILE)
-WS_DIR = os.path.normpath(os.path.join(THIS_DIR, "..", ".."))
+WS_DIR = os.path.normpath(os.path.join(THIS_DIR, "..", "..", "..", ".."))
 CURR_WORKING_DIR = os.getcwd()
 
 # global vars

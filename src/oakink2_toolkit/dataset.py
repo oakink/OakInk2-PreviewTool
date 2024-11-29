@@ -96,12 +96,14 @@ class OakInk2__Dataset(torch.utils.data.Dataset):
         self,
         dataset_prefix: str,
         return_instantiated: bool = False,
+        anno_offset: str = "anno_preview",
+        obj_offset: str = "object_raw",
     ):
         self.dataset_prefix = dataset_prefix
 
         self.data_prefix = os.path.join(self.dataset_prefix, "data")
-        self.anno_prefix = os.path.join(self.dataset_prefix, "anno_preview")
-        self.obj_prefix = os.path.join(self.dataset_prefix, "object_preview")
+        self.anno_prefix = os.path.join(self.dataset_prefix, anno_offset)
+        self.obj_prefix = os.path.join(self.dataset_prefix, obj_offset)
         self.obj_model_prefix = os.path.join(self.obj_prefix, "align_ds")
         self.program_prefix = os.path.join(self.dataset_prefix, "program")
         self.program_extension_prefix = os.path.join(self.dataset_prefix, "program_extension")
