@@ -131,17 +131,114 @@
 ## Dataset Format
 
 + `data/scene_0x__y00z++00000000000000000000__YYYY-mm-dd-HH-MM-SS`
+
+    This stores the captured multi-view image streams. Stream from different cameras are stored in different subdirectories.
+    ```
+    scene_0x__y00z++00000000000000000000__YYYY-mm-dd-HH-MM-SS
+    |-- <serial 0>
+    |   |-- <frame id 0>.jpg
+    |   |-- <frame id 1>.jpg
+    |   |-- ...
+    |   `-- <frame id N>.jpg
+    |-- ...
+    `-- <serial 3>
+        |-- <frame id 0>.jpg
+        |-- <frame id 1>.jpg
+        |-- ...
+        `-- <frame id N>.jpg
+    ```
+
 + `anno/scene_0x__y00z++00000000000000000000__YYYY-mm-dd-HH-MM-SS.pkl`
 
     This pickle stores a dictonary under the following format:
     ```
     {
-
+        'cam_def': dict[str, str],                      # camera serial to name mapping
+        'cam_selection': list[str],                     # selected camera names
+        'frame_id_list': list[int],                     # image frame id list in current seq 
+        'cam_intr': dict[str, dict[int, np.ndarray]],   # camera intrinsic matrix [3, 3]
+        'cam_extr': dict[str, dict[int, np.ndarray]],   # camera extrinsic matrix [4, 4]
+        'mocap_frame_id_list': list[int],               # mocap frame id list in current seq
+        'obj_list': list[str],                          # object part id list in current seq
+        'obj_transf': dict[str, dict[int, np.ndarray]], # object transformation matrix [4, 4]
+        'raw_smplx': dict[int, dict[str, torch.Tensor]],# raw smplx data
+        'raw_mano':  dict[int, dict[str, torch.Tensor]],# raw mano data
     }
     ```
 + `object_{raw,scan}/obj_desc.json`
+
+    This stores the object description in the following format:
+    ```
+    {
+        obj_id: {
+            "obj_id": str,
+            "obj_name": str,
+        }
+    }
+    ```
+
 + `object_{raw,scan}/align_ds`
-+ `program/desc_info/scene_0x__y00z++00000000000000000000__YYYY-mm-dd-HH-MM-SS.json`
-+ `program/initial_condition_info/scene_0x__y00z++00000000000000000000__YYYY-mm-dd-HH-MM-SS.json`
-+ `program/pdg/scene_0x__y00z++00000000000000000000__YYYY-mm-dd-HH-MM-SS.json`
+
+    This directory stores the object models.
+    ```
+    align_ds
+    |-- obj_id
+    |   |-- *.obj/ply
+    |   |-- ...
+    `-- ...
+    ```
+
 + `program/program_info/scene_0x__y00z++00000000000000000000__YYYY-mm-dd-HH-MM-SS.json`
+
+    ```
+    {
+        (str(lh_interval), str(rh_interval)): {
+            "primitive": str,
+            "obj_list: list[str],
+            "interaction_mode": str,        # [lh_main, rh_main, bh_main]
+            "primitive_lh": str,
+            "primitive_rh": str,
+            "obj_list_lh": list[str],
+            "obj_list_rh": list[str],
+        }
+    }
+    ```
+
+    + {lh,rh}_interval: the interval of the primitive in the sequence. If `None`, the corresponding hand is not available (e.g. doing something else) in current primitive.
+    + primitive: the primitive id.
+    + obj_list: the object list involved in the primitive.
+    + interaction_mode: the interaction mode of the primitive. `lh_main` means the left hand is the **main hand for affordance implementation**. Similarly, `rh_main` means the right hand is the main hand, and `bh_main` means both hands are main hands.
+    + primitive_{lh,rh}: the primitive id for the left/right hand.
+    + obj_list_{lh,rh}: the object list involved in the left/right hand.
+
++ `program/desc_info/scene_0x__y00z++00000000000000000000__YYYY-mm-dd-HH-MM-SS.json`
+
+    ```
+    {
+        (str(lh_interval), str(rh_interval)): {
+            "seg_desc": str,                # textual description of current primitive
+        }
+    }
+    ```
+
++ `program/initial_condition_info/scene_0x__y00z++00000000000000000000__YYYY-mm-dd-HH-MM-SS.json`
+
+    ```
+    {
+        (str(lh_interval), str(rh_interval)): {
+            "initial_condition": list[str], # initial condition for the complex task
+            "recipe": list[str],            # requirements to complete for the complex task
+        }
+    }
+    ```
+
++ `program/pdg/scene_0x__y00z++00000000000000000000__YYYY-mm-dd-HH-MM-SS.json`
+
+    ```
+    {
+        "id_map": dict[interval, int],      # map from interval to primitive id
+        "v": list[int],                     # list of vertices
+        "e": list[list[int]],               # list of edges
+    }
+    ```
+    Note that some filtering is required to properly load pdg data. See [oakink2_toolkit/dataset.py#L310-L323](src/oakink2_toolkit/dataset.py) for contracting excessive nodes.
