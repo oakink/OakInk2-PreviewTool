@@ -165,6 +165,37 @@
         'raw_mano':  dict[int, dict[str, torch.Tensor]],# raw mano data
     }
     ```
+
+    The raw smplx data is structured as follows:
+    ```
+    {
+        'body_shape':       torch.Tensor[1, 300],
+        'expr_shape':       torch.Tensor[1, 10],
+        'jaw_pose':         torch.Tensor[1, 1, 4],
+        'leye_pose':        torch.Tensor[1, 1, 4],
+        'reye_pose':        torch.Tensor[1, 1, 4],
+        'world_rot':        torch.Tensor[1, 4],
+        'world_tsl':        torch.Tensor[1, 3],
+        'body_pose':        torch.Tensor[1, 21, 4],
+        'left_hand_pose':   torch.Tensor[1, 15, 4],
+        'right_hand_pose':  torch.Tensor[1, 15, 4],
+    }
+    ```
+    where `world_rot`, `body_pose`, `{lh,rh}_hand_pose` are quaternions in `[w,x,y,z]` format. The lower body of `body_pose`, `jaw_pose`, `{l,r}eye_pose` are not used.
+
+    The raw mano data is structured as follows:
+    ```
+    {
+        'rh__pose_coeffs':  torch.Tensor[1, 16, 4],
+        'lh__pose_coeffs':  torch.Tensor[1, 16, 4],
+        'rh__tsl':          torch.Tensor[1, 3],
+        'lh__tsl':          torch.Tensor[1, 3],
+        'rh__betas':        torch.Tensor[1, 10],
+        'lh__betas':        torch.Tensor[1, 10],
+    }
+    ```
+    where `{lh,rh}__pose_coeffs` are quaternions in `[w,x,y,z]` format.
+
 + `object_{raw,scan}/obj_desc.json`
 
     This stores the object description in the following format:
