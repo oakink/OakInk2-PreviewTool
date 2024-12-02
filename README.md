@@ -1,4 +1,44 @@
-# OakInk2 Toolkit & Preview-Tool
+<p align="center">
+  <p align="center">
+    <img src="doc/logo@2x-80.png"" alt="Logo" width="40%">
+  </p>
+  <h2 align="center">A Dataset of Bimanual Hands-Object Manipulation in Complex Task Completion
+  </h2>
+  <h3 align="center">:wrench: Dataset Toolkit</h3>
+
+  <p align="center">
+    <a href="https://github.com/kelvin34501"><strong>Xinyu Zhan*</strong></a>
+    ·
+    <a href="https://lixiny.github.io"><strong>Lixin Yang*</strong></a>
+    ·
+    <a href=""><strong>Yifei Zhao</strong></a>
+    ·
+    <a href=""><strong>Kangrui Mao</strong></a>
+    ·
+    <a href=""><strong>Hanlin Xu</strong></a>
+    <br>
+    <a href=""><strong>Zenan Lin</strong></a>
+    ·
+    <a href="https://kailinli.top"><strong>Kailin Li</strong></a>
+    ·
+    <a href="https://mvig.org"><strong>Cewu Lu</strong>&dagger;</a>
+  </p>
+  <h3 align="center">CVPR 2024</h3>
+    <div align="center">
+    <img src="doc/teaser.jpg" alt="Logo" width="90%">
+  </div>
+  <br/>
+
+  <p align="center">
+    <a href="https://arxiv.org/pdf/2403.19417.pdf">
+      <img src='https://img.shields.io/badge/Paper-green?style=for-the-badge&logo=adobeacrobatreader&logoColor=white&labelColor=66cc00&color=94DD15' alt='Paper PDF'></a>
+    <a href='https://oakink.net/v2'>
+      <img src='https://img.shields.io/badge/Project-orange?style=for-the-badge&logo=Google%20chrome&logoColor=white&labelColor=D35400' alt='Project Page'></a>
+    <a href="https://www.youtube.com/watch?v=u8fV1TWUvdQ"><img alt="youtube views" src="https://img.shields.io/badge/Video-red?style=for-the-badge&logo=youtube&labelColor=ce4630&logoColor=red"/></a>
+  </p>
+</p>
+
+This repo contains the OakInk2 dataset toolkit (oakink2_toolkit) -- a Python package that provides data loading, splitting, and visualization.
 
 ## Setup dataset files.
 
