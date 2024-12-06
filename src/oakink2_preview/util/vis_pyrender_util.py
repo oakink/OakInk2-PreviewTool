@@ -181,7 +181,19 @@ class PyMultiObjRenderer:
                     obj = trimesh.primitives.Extrusion(polygon=poly, height=0.08)
                 except:
                     obj = trimesh.primitives.Box(extents=(0.04, 0.06, 0.08))
-            object = pyrender.Mesh.from_trimesh(obj)
+            # create material if has texture
+            if obj.visual.kind == "face":
+                material = pyrender.MetallicRoughnessMaterial(
+                    baseColorTexture=pyrender.Texture(
+                        source=pyrender.ImageData(
+                            obj.visual.image,
+                            "RGB",
+                        )
+                    )
+                )
+                object = pyrender.Mesh.from_trimesh(obj, material=material)
+            else:
+                object = pyrender.Mesh.from_trimesh(obj)
             node_obj = pyrender.Node(mesh=object, matrix=np.eye(4))
             self.node_obj_map[obj_name] = node_obj
             self.scene.add_node(node_obj)
@@ -200,6 +212,7 @@ class PyMultiObjRenderer:
         stick=False,
         blend=0.6,
         extra_flags=0,
+        seg=False,
     ):
         for obj_name, obj_pose in obj_pose_map.items():
             if obj_pose is not None:
@@ -219,10 +232,36 @@ class PyMultiObjRenderer:
                 self.scene.add_node(end_pr)
                 extra_node.append(end_pr)
 
+        if seg:
+            # get a map of node to obj & extra mesh
+            nmmap = {}
+            for obj_name, node in self.node_obj_map.items():
+                nmmap[node] = obj_name
+            for _off in range(len(extra_mesh)):
+                end_pr = extra_node[_off]
+                nmmap[end_pr] = f"_extra:{_off}"
+
+            all_node_list = list(v for k, v in self.node_obj_map.items() if obj_pose_map[k] is not None) + extra_node
+            avail_node_list = [el for el in all_node_list if el in self.scene.mesh_nodes]
+
+            nm = {node: 1 * (i + 1) for i, node in enumerate(avail_node_list)}
+            color = self.r.render(self.scene, pyrender.RenderFlags.SKIP_CULL_FACES | pyrender.RenderFlags.SEG, nm)[0]
+
+            # use name version of nm
+            nm_ = {}
+            for node, seg_id in nm.items():
+                nm_[nmmap[node]] = seg_id
+
+            if extra_mesh is not None:
+                for ee in extra_node:
+                    self.scene.remove_node(ee)
+            return color, nm_
+
         color, depth = self.r.render(
             self.scene,
             flags=pyrender.RenderFlags.NONE | (pyrender.RenderFlags.RGBA if alpha else 0) | extra_flags,
         )
+
         color = color.copy()
         if background is not None:
             background = background[:, :, (2, 1, 0)]
